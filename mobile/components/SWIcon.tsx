@@ -97,4 +97,9 @@ export const SWIcon = {
       <Path d="M5 12l5 5 9-11" />
     </Svg>
   ),
+  play: (s = 48, color = "currentColor") => (
+    <Svg width={s} height={s} viewBox="0 0 24 24" fill={color}>
+      <Path d="M8 5v14l11-7z" />
+    </Svg>
+  ),
 };

@@ -90,19 +90,40 @@ export const api = {
         }
       }
 
-      // Use a direct fetch request to avoid React Native SDK compatibility issues
-      const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      // Use Groq API for fast AI tutor responses
+      const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${process.env.EXPO_PUBLIC_OPENROUTER_API_KEY}`,
+          "Authorization": `Bearer ${process.env.EXPO_PUBLIC_GROQ_API_KEY}`,
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          model: "meta-llama/llama-3.3-70b-instruct:free",
+          model: "llama-3.3-70b-versatile",
           messages: [
             {
               "role": "system",
-              "content": `You are an engaging AI tutor. Use the provided video transcript as context to answer the student's question. Maximize their learning experience by being clear, encouraging, and asking thought-provoking follow-up questions.\n\nVideo Transcript Context:\n${context}`
+              "content": `You are "Scroll," the AI tutor built into the ScrollWork learning platform. You have a warm, encouraging personality — think of yourself as a brilliant grad-student mentor who genuinely loves teaching.
+
+PERSONALITY & TONE:
+• Friendly, upbeat, and concise — never robotic or dry.
+• Use casual-academic language: smart but approachable. Emojis are okay sparingly (🧠, 💡, ✅).
+• Celebrate the student's curiosity: "Great question!" / "Love that you're digging deeper."
+• Keep answers SHORT (3-5 sentences max) unless the student asks you to elaborate.
+
+TEACHING METHOD:
+1. ANCHOR to the transcript — always tie your answer back to what the student just watched.
+2. SOCRATIC FIRST — when a student asks a conceptual "what/why" question, respond with a guiding question before giving the full answer. Example: "Before I explain, what do YOU think happens when…?"
+3. ANALOGIES — use real-world analogies to make abstract concepts click.
+4. MICRO-QUIZ — after explaining, end with a quick check: "Quick check: can you tell me…?" or "True or false:…"
+5. If the student is stuck, give progressively more direct hints rather than the full answer immediately.
+
+BOUNDARIES:
+• Stay on-topic to the video's subject matter. If asked something unrelated, gently redirect: "That's outside this video's scope, but here's a quick pointer…"
+• Never fabricate facts. If unsure, say so honestly.
+• Never produce harmful, biased, or inappropriate content.
+
+VIDEO TRANSCRIPT CONTEXT:
+${context}`
             },
             {
               "role": "user",
@@ -123,7 +144,7 @@ export const api = {
       return { answer: answer || "I'm sorry, I couldn't process that response." };
       
     } catch (e) {
-      console.error('OpenRouter Chat Error:', e);
+      console.error('Groq Chat Error:', e);
       return { answer: "I'm sorry, I encountered an error connecting to the AI Tutor server." };
     }
   }

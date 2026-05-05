@@ -1,33 +1,47 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, FlatList, Dimensions, TouchableOpacity } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { View, Text, StyleSheet, FlatList, Dimensions, TouchableOpacity, Pressable } from 'react-native';
+import { useLocalSearchParams, useRouter, usePathname } from 'expo-router';
 import { Video, ResizeMode } from 'expo-av';
 import { useTheme } from '../constants/theme';
 import { api, VideoData } from '../services/api';
 import { SWChip, SWTabBar, SWLevelBars } from '../components/SWUI';
 import { SWIcon } from '../components/SWIcon';
 import { LinearGradient } from 'expo-linear-gradient';
-import { recordConcept, updateTimeSpent } from '../services/sessionStore';
+import { recordConcept, updateTimeSpent, loadSession } from '../services/sessionStore';
 
 const { height, width } = Dimensions.get('window');
 
 export default function Feed() {
   const router = useRouter();
   const { field, difficulty } = useLocalSearchParams();
+  const pathname = usePathname();
+  const isFocused = pathname === '/feed';
   const { colors, typography } = useTheme();
 
   const [videos, setVideos] = useState<VideoData[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [timeLimitReached, setTimeLimitReached] = useState(false);
+  const [isPausedByUser, setIsPausedByUser] = useState(false);
+  const [conceptCount, setConceptCount] = useState(0);
+  const [sessionMinutes, setSessionMinutes] = useState(0);
 
   useEffect(() => {
     loadFeed();
+    // Load initial session data
+    loadSession().then((session) => {
+      setConceptCount(Object.keys(session.concepts).length);
+      setSessionMinutes(Math.floor(session.timeSpentSeconds / 60));
+    });
 
     const interval = setInterval(async () => {
       const totalSeconds = await updateTimeSpent(10);
+      setSessionMinutes(Math.floor(totalSeconds / 60));
       if (totalSeconds >= 3600) {
         setTimeLimitReached(true);
       }
+      // Refresh concept count
+      const session = await loadSession();
+      setConceptCount(Object.keys(session.concepts).length);
     }, 10000);
 
     return () => clearInterval(interval);
@@ -46,7 +60,11 @@ export default function Feed() {
       const visibleItem = viewableItems[0].item;
       if (visibleItem) {
         const concept = visibleItem.category || `${field} Concept`;
-        recordConcept(concept);
+        recordConcept(concept).then(() => {
+          loadSession().then((session) => {
+            setConceptCount(Object.keys(session.concepts).length);
+          });
+        });
       }
     }
   }).current;
@@ -54,14 +72,23 @@ export default function Feed() {
   const renderItem = ({ item, index }: { item: VideoData, index: number }) => {
     const isActive = index === currentIndex;
     return (
-      <View style={{ height, width, backgroundColor: '#000' }}>
+      <Pressable onPress={() => setIsPausedByUser(!isPausedByUser)} style={{ height, width, backgroundColor: '#000' }}>
         <Video
           source={{ uri: item.video_url }}
           style={StyleSheet.absoluteFill}
           resizeMode={ResizeMode.COVER}
-          shouldPlay={isActive && !timeLimitReached}
+          shouldPlay={isActive && !timeLimitReached && isFocused && !isPausedByUser}
           isLooping
         />
+
+        {isPausedByUser && (
+          <View style={{
+            position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+            alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.3)', pointerEvents: 'none'
+          }}>
+            {SWIcon.play(72, 'rgba(255,255,255,0.8)')}
+          </View>
+        )}
 
         {/* Scrim for legibility */}
         <LinearGradient
@@ -70,16 +97,40 @@ export default function Feed() {
         />
 
         {/* Top Meta */}
-        <View style={{ position: 'absolute', top: 60, left: 16, right: 16, flexDirection: 'row', gap: 8 }}>
-          <SWChip tone="glass" size="sm">
-            <SWLevelBars level={difficulty as string} size={10} color="#fff" dimColor="rgba(255,255,255,0.4)" />
-            <Text style={{ fontFamily: typography.fontFamilyMono, fontSize: 11, color: '#fff', marginLeft: 4 }}>
-              {difficulty}
-            </Text>
-          </SWChip>
-          <SWChip tone="glass" size="sm">
-            {field}
-          </SWChip>
+        <View style={{ position: 'absolute', top: 60, left: 16, right: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <SWChip tone="glass" size="sm">
+              <SWLevelBars level={difficulty as string} size={10} color="#fff" dimColor="rgba(255,255,255,0.4)" />
+              <Text style={{ fontFamily: typography.fontFamilyMono, fontSize: 11, color: '#fff', marginLeft: 4 }}>
+                {difficulty}
+              </Text>
+            </SWChip>
+            <SWChip tone="glass" size="sm">
+              {field}
+            </SWChip>
+          </View>
+          <View style={{ flexDirection: 'row', gap: 6 }}>
+            <View style={{
+              backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 14, paddingHorizontal: 10, paddingVertical: 5,
+              flexDirection: 'row', alignItems: 'center', gap: 4,
+              borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)'
+            }}>
+              <Text style={{ fontSize: 12 }}>🧠</Text>
+              <Text style={{ fontFamily: typography.fontFamilyMono, fontSize: 11, color: '#fff' }}>
+                {conceptCount}
+              </Text>
+            </View>
+            <View style={{
+              backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 14, paddingHorizontal: 10, paddingVertical: 5,
+              flexDirection: 'row', alignItems: 'center', gap: 4,
+              borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)'
+            }}>
+              <Text style={{ fontSize: 12 }}>⏱</Text>
+              <Text style={{ fontFamily: typography.fontFamilyMono, fontSize: 11, color: '#fff' }}>
+                {sessionMinutes}m
+              </Text>
+            </View>
+          </View>
         </View>
 
         {/* Right Rail */}
@@ -146,7 +197,7 @@ export default function Feed() {
             Ask AI
           </Text>
         </TouchableOpacity>
-      </View>
+      </Pressable>
     );
   };
 
@@ -161,7 +212,11 @@ export default function Feed() {
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={{ itemVisiblePercentThreshold: 50 }}
       />
-      <SWTabBar active="home" onTab={() => { }} />
+      <SWTabBar active="home" onTab={(id) => {
+        if (id === 'search') router.push('/explore');
+        else if (id === 'library') router.push('/library');
+        else if (id === 'profile') router.push('/profile');
+      }} />
 
       {timeLimitReached && (
         <View style={{

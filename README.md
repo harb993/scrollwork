@@ -6,7 +6,7 @@ ScrollWork is an educational platform designed to teach highly technical concept
 
 ScrollWork uses a meticulously crafted **study-cozy pastel aesthetic**, featuring both Light and Dark modes. The interface is specifically designed to reduce cognitive overload and maximize focus, utilizing carefully curated OKLCH color palettes (such as *Peach*, *Sage*, *Blush*, and *Iris*) and modern typography (`Inter` and `JetBrains Mono`). 
 
-The UI feels premium, soft, and inviting, encouraging deeper exploration into difficult topics.
+The UI feels premium, soft, and inviting, encouraging deeper exploration into difficult topics.  
 
 ## 📱 Platforms
 

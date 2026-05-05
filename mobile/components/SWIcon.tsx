@@ -15,8 +15,8 @@ export function SWLogoMark({ size = 40 }: { size?: number }) {
       <Rect x="6" y="6" width="168" height="168" rx="44" fill="url(#swMark)" />
       {/* Three ascending bars — difficulty metaphor */}
       <G>
-        <Rect x="46" y="98"  width="18" height="44" rx="6" fill="#FAF7F2" opacity={0.55} />
-        <Rect x="78" y="76"  width="18" height="66" rx="6" fill="#FAF7F2" opacity={0.78} />
+        <Rect x="46" y="98" width="18" height="44" rx="6" fill="#FAF7F2" opacity={0.55} />
+        <Rect x="78" y="76" width="18" height="66" rx="6" fill="#FAF7F2" opacity={0.78} />
         <Rect x="110" y="50" width="18" height="92" rx="6" fill="#FAF7F2" />
       </G>
       {/* Play triangle nested in the tallest bar */}
@@ -48,8 +48,8 @@ export const SWIcon = {
   ),
   sparkle: (s = 18, color = "currentColor") => (
     <Svg width={s} height={s} viewBox="0 0 24 24" fill={color}>
-      <Path d="M12 2l1.6 5.4L19 9l-5.4 1.6L12 16l-1.6-5.4L5 9l5.4-1.6z"/>
-      <Path d="M19 14l.9 2.1L22 17l-2.1.9L19 20l-.9-2.1L16 17l2.1-.9z" opacity=".6"/>
+      <Path d="M12 2l1.6 5.4L19 9l-5.4 1.6L12 16l-1.6-5.4L5 9l5.4-1.6z" />
+      <Path d="M19 14l.9 2.1L22 17l-2.1.9L19 20l-.9-2.1L16 17l2.1-.9z" opacity=".6" />
     </Svg>
   ),
   search: (s = 20, color = "currentColor") => (

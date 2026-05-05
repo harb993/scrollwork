@@ -7,6 +7,7 @@ import { api, VideoData } from '../services/api';
 import { SWChip, SWTabBar, SWLevelBars } from '../components/SWUI';
 import { SWIcon } from '../components/SWIcon';
 import { LinearGradient } from 'expo-linear-gradient';
+import { recordConcept, updateTimeSpent } from '../services/sessionStore';
 
 const { height, width } = Dimensions.get('window');
 
@@ -14,12 +15,22 @@ export default function Feed() {
   const router = useRouter();
   const { field, difficulty } = useLocalSearchParams();
   const { colors, typography } = useTheme();
-  
+
   const [videos, setVideos] = useState<VideoData[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [timeLimitReached, setTimeLimitReached] = useState(false);
 
   useEffect(() => {
     loadFeed();
+
+    const interval = setInterval(async () => {
+      const totalSeconds = await updateTimeSpent(10);
+      if (totalSeconds >= 3600) {
+        setTimeLimitReached(true);
+      }
+    }, 10000);
+
+    return () => clearInterval(interval);
   }, []);
 
   const loadFeed = async () => {
@@ -29,7 +40,14 @@ export default function Feed() {
 
   const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
     if (viewableItems.length > 0) {
-      setCurrentIndex(viewableItems[0].index);
+      const index = viewableItems[0].index;
+      setCurrentIndex(index);
+
+      const visibleItem = viewableItems[0].item;
+      if (visibleItem) {
+        const concept = visibleItem.category || `${field} Concept`;
+        recordConcept(concept);
+      }
     }
   }).current;
 
@@ -41,10 +59,10 @@ export default function Feed() {
           source={{ uri: item.video_url }}
           style={StyleSheet.absoluteFill}
           resizeMode={ResizeMode.COVER}
-          shouldPlay={isActive}
+          shouldPlay={isActive && !timeLimitReached}
           isLooping
         />
-        
+
         {/* Scrim for legibility */}
         <LinearGradient
           colors={['transparent', 'rgba(0,0,0,0.65)']}
@@ -143,7 +161,27 @@ export default function Feed() {
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={{ itemVisiblePercentThreshold: 50 }}
       />
-      <SWTabBar active="home" onTab={() => {}} />
+      <SWTabBar active="home" onTab={() => { }} />
+
+      {timeLimitReached && (
+        <View style={{
+          position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.95)',
+          alignItems: 'center', justifyContent: 'center', padding: 32, zIndex: 100
+        }}>
+          {SWIcon.lock(48, colors.peach)}
+          <Text style={{
+            fontFamily: typography.fontFamilyBold, fontSize: 24, color: '#fff',
+            marginTop: 24, textAlign: 'center'
+          }}>Time's Up!</Text>
+          <Text style={{
+            fontFamily: typography.fontFamily, fontSize: 16, color: 'rgba(255,255,255,0.7)',
+            marginTop: 12, textAlign: 'center', lineHeight: 22
+          }}>
+            You have reached your 1-hour session limit. Take a break, review your notes, and come back later to learn more concepts!
+          </Text>
+        </View>
+      )}
     </View>
   );
 }

@@ -79,22 +79,52 @@ export const api = {
     }
   },
   
-  chat: async (question: string, videoId: string): Promise<{ answer: string }> => {
-    question = question.toLowerCase();
-    await new Promise(r => setTimeout(r, 1200)); 
-    
-    const socratic = [
-        "Interesting question. What do you think would happen if we doubled the input size?",
-        "Before I answer that — can you tell me what you already understand about this concept?",
-        "That's the right instinct. Try thinking about it this way: if you had to explain this to a 5-year-old, what analogy would you use?",
-        "Good question. Let me flip it: why do you think this approach was chosen over the alternatives?",
-    ];
+  chat: async (question: string, transcriptUrl?: string): Promise<{ answer: string }> => {
+    try {
+      let context = "No specific transcript context available.";
+      
+      if (transcriptUrl) {
+        const transcriptResponse = await api.getTranscript(transcriptUrl);
+        if (transcriptResponse && transcriptResponse.text) {
+          context = transcriptResponse.text;
+        }
+      }
 
-    let answer = socratic[Math.floor(Math.random() * socratic.length)];
-    if (question.includes("why")) answer = "That's the key question. Think about what problem this solves — if we didn't use this approach, what would break?";
-    else if (question.includes("what")) answer = "Let me answer your question with a question: based on what you just watched, how would you define this concept in your own words?";
-    else if (question.includes("how")) answer = "Great 'how' question. Try to decompose it: what are the individual steps?";
+      // Use a direct fetch request to avoid React Native SDK compatibility issues
+      const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${process.env.EXPO_PUBLIC_OPENROUTER_API_KEY}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          model: "meta-llama/llama-3.3-70b-instruct:free",
+          messages: [
+            {
+              "role": "system",
+              "content": `You are an engaging AI tutor. Use the provided video transcript as context to answer the student's question. Maximize their learning experience by being clear, encouraging, and asking thought-provoking follow-up questions.\n\nVideo Transcript Context:\n${context}`
+            },
+            {
+              "role": "user",
+              "content": question
+            }
+          ]
+        })
+      });
 
-    return { answer };
+      const response = await res.json();
+      let answer = "";
+      if (response && response.choices && response.choices.length > 0) {
+        answer = response.choices[0]?.message?.content || "";
+      } else {
+        answer = "I'm sorry, I couldn't process that response.";
+      }
+
+      return { answer: answer || "I'm sorry, I couldn't process that response." };
+      
+    } catch (e) {
+      console.error('OpenRouter Chat Error:', e);
+      return { answer: "I'm sorry, I encountered an error connecting to the AI Tutor server." };
+    }
   }
 };

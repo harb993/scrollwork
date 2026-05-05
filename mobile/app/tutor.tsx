@@ -45,7 +45,7 @@ export default function Tutor() {
     const typingId = (Date.now() + 1).toString();
     setMessages(prev => [...prev, { id: typingId, text: '...', sender: 'system' }]);
 
-    const response = await api.chat(userMsg.text, videoId as string);
+    const response = await api.chat(userMsg.text, transcriptUrl as string);
     
     setMessages(prev => prev.filter(m => m.id !== typingId).concat({
       id: Date.now().toString(),

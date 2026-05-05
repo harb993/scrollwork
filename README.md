@@ -67,3 +67,5 @@ We use **Supabase** for our database and video storage. The data is partitioned 
 
 ## 🤝 Contributors
 Built with ❤️ for the Hackathon.
+
+

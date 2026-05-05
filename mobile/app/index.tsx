@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-nati
 import { useRouter } from 'expo-router';
 import { useTheme } from '../constants/theme';
 import { SWLevelBars, SWChip } from '../components/SWUI';
-import { SWIcon } from '../components/SWIcon';
+import { SWIcon, SWLogoMark } from '../components/SWIcon';
 
 export default function Onboarding() {
   const router = useRouter();
@@ -40,16 +40,9 @@ export default function Onboarding() {
           <View style={{ position: 'absolute', inset: 0, backgroundColor: colors.peach }} />
           <View style={{
             position: 'absolute', top: 0, bottom: 0, left: 0, right: 0,
-            alignItems: 'center', justifyContent: 'center', paddingTop: 40,
+            alignItems: 'center', justifyContent: 'center',
           }}>
-            <Text style={{
-              fontFamily: typography.fontFamilyBold,
-              fontSize: 220,
-              color: colors.peachInk,
-              letterSpacing: -8,
-              opacity: 0.35,
-              lineHeight: 220,
-            }}>S</Text>
+            <SWLogoMark size={120} />
           </View>
           <View style={{ position: 'absolute', left: 0, right: 0, bottom: 24, alignItems: 'center' }}>
             <Text style={{

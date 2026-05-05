@@ -3,275 +3,658 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ScrollWork Feed</title>
-    <!-- Include Supabase JS Client -->
+    <title>ScrollWork</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
         :root {
-            --paper: #FAF7F2;
-            --card: #FFFFFF;
-            --raised: #F3EFE7;
-            --ink: #1F1B17;
-            --ink2: #5A544C;
-            --ink3: #8C857B;
+            --paper:    #FAF7F2;
+            --card:     #FFFFFF;
+            --raised:   #F3EFE7;
+            --ink:      #1F1B17;
+            --ink2:     #5A544C;
+            --ink3:     #8C857B;
             --hairline: rgba(28,24,20,0.08);
-            --brand: #DCAE9A;
-            --brandInk: #FFFFFF;
+            --hairline-strong: rgba(28,24,20,0.14);
+            --brand:    oklch(0.72 0.10 50);
+            --brand-ink: #FFFFFF;
+            --brand-deep: oklch(0.42 0.10 50);
+            --peach:    oklch(0.86 0.07 55);
+            --peach-ink: oklch(0.42 0.10 50);
+            --sage:     oklch(0.86 0.06 155);
+            --blush:    oklch(0.84 0.08 25);
+            --iris:     oklch(0.80 0.09 285);
         }
 
         @media (prefers-color-scheme: dark) {
             :root {
-                --paper: #15130F;
-                --card: #1E1B16;
-                --raised: #2A2620;
-                --ink: #F2EEE6;
-                --ink2: #B8B0A2;
-                --ink3: #7C7468;
+                --paper:    #15130F;
+                --card:     #1E1B16;
+                --raised:   #2A2620;
+                --ink:      #F2EEE6;
+                --ink2:     #B8B0A2;
+                --ink3:     #7C7468;
                 --hairline: rgba(255,247,230,0.08);
-                --brand: #EBB9A3;
-                --brandInk: #1A1612;
+                --hairline-strong: rgba(255,247,230,0.14);
+                --brand:    oklch(0.78 0.10 50);
+                --brand-ink: #1A1612;
+                --brand-deep: oklch(0.55 0.10 50);
+                --peach:    oklch(0.55 0.07 55);
+                --peach-ink: oklch(0.92 0.05 55);
+                --sage:     oklch(0.50 0.06 155);
+                --blush:    oklch(0.55 0.07 25);
+                --iris:     oklch(0.52 0.08 285);
             }
         }
 
+        *, *::before, *::after { box-sizing: border-box; }
         body, html {
-            margin: 0;
-            padding: 0;
-            height: 100%;
-            background-color: #000;
+            margin: 0; padding: 0; height: 100%;
             font-family: 'Inter', sans-serif;
-            overflow: hidden;
             color: var(--ink);
+            background: var(--paper);
         }
-        
-        #video-container {
+
+        #loading {
+            position: fixed; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            color: var(--ink2); font-size: 1.1rem; z-index: 200;
+        }
+
+        /* ─────────────────────────────────────────────
+           SHARED CHIP
+        ───────────────────────────────────────────── */
+        .chip {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 4px 10px; border-radius: 999px;
+            background: rgba(255,255,255,0.18); color: #fff;
+            font-family: 'JetBrains Mono', monospace; font-size: 11px;
+            backdrop-filter: blur(8px);
+        }
+
+        /* ─────────────────────────────────────────────
+           MOBILE LAYOUT  (default, < 900px)
+        ───────────────────────────────────────────── */
+        #mobile-feed {
             height: 100vh;
             overflow-y: scroll;
             scroll-snap-type: y mandatory;
+            background: #000;
         }
 
         .video-item {
-            height: 100vh;
-            width: 100%;
+            height: 100vh; width: 100%;
             scroll-snap-align: start;
-            position: relative;
-            background-color: #000;
+            position: relative; background: #000;
         }
 
-        video {
-            height: 100%;
-            width: 100%;
-            object-fit: cover;
+        .video-item video {
+            height: 100%; width: 100%; object-fit: cover;
         }
 
         .scrim {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
+            position: absolute; bottom: 0; left: 0; right: 0;
             height: 50vh;
-            background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0) 100%);
-            pointer-events: none;
-            z-index: 1;
+            background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 100%);
+            pointer-events: none; z-index: 1;
         }
 
         .top-meta {
-            position: absolute;
-            top: 60px;
-            left: 16px;
-            display: flex;
-            gap: 8px;
-            z-index: 10;
+            position: absolute; top: 60px; left: 16px;
+            display: flex; gap: 8px; z-index: 10;
         }
 
-        .chip {
-            background: rgba(255,255,255,0.2);
-            backdrop-filter: blur(8px);
-            padding: 4px 10px;
-            border-radius: 999px;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 11px;
-            color: #fff;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-
-        .right-rail {
-            position: absolute;
-            right: 12px;
-            bottom: 180px;
-            display: flex;
-            flex-direction: column;
-            gap: 22px;
-            align-items: center;
+        .mobile-rail {
+            position: absolute; right: 12px; bottom: 180px;
+            display: flex; flex-direction: column; gap: 22px; align-items: center;
             z-index: 10;
         }
 
         .action-btn {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 4px;
-            color: #fff;
-            text-shadow: 0 1px 4px rgba(0,0,0,0.5);
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 10px;
-            cursor: pointer;
+            display: flex; flex-direction: column; align-items: center; gap: 4px;
+            color: #fff; text-shadow: 0 1px 4px rgba(0,0,0,0.5);
+            font-family: 'JetBrains Mono', monospace; font-size: 10px;
+            cursor: pointer; border: none; background: none; padding: 0;
         }
 
-        .action-btn svg {
-            filter: drop-shadow(0 2px 8px rgba(0,0,0,0.4));
-        }
+        .action-btn svg { filter: drop-shadow(0 2px 8px rgba(0,0,0,0.4)); }
 
         .bottom-info {
-            position: absolute;
-            left: 16px;
-            right: 80px;
-            bottom: 116px;
-            z-index: 10;
-            color: #fff;
+            position: absolute; left: 16px; right: 80px; bottom: 116px;
+            z-index: 10; color: #fff;
             text-shadow: 0 1px 6px rgba(0,0,0,0.4);
         }
 
-        .author-row {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-bottom: 8px;
-        }
+        .author-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
 
         .author-avatar {
-            width: 28px;
-            height: 28px;
-            border-radius: 14px;
+            width: 28px; height: 28px; border-radius: 14px;
             background: rgba(255,255,255,0.2);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-            font-size: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 700; font-size: 12px;
         }
 
-        .video-title {
-            font-size: 19px;
-            font-weight: 700;
-            margin: 0;
-            line-height: 1.2;
+        .video-title { font-size: 19px; font-weight: 700; margin: 0; line-height: 1.2; }
+        .video-desc  { font-size: 13px; opacity: 0.85; margin-top: 6px; line-height: 1.4; }
+
+        .ask-ai-btn {
+            position: absolute; right: 14px; bottom: 116px;
+            background: var(--brand); color: var(--brand-ink);
+            height: 44px; padding: 0 16px 0 12px; border-radius: 22px;
+            display: flex; align-items: center; gap: 6px;
+            font-family: 'Inter', sans-serif; font-weight: 700; font-size: 14px;
+            cursor: pointer; z-index: 10;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.3); border: none;
         }
 
-        .video-desc {
-            font-size: 13px;
-            opacity: 0.85;
-            margin-top: 6px;
-            line-height: 1.4;
-        }
-
-        .ask-ai {
-            position: absolute;
-            right: 14px;
-            bottom: 116px;
-            background: var(--brand);
-            color: var(--brandInk);
-            height: 44px;
-            padding: 0 16px 0 12px;
-            border-radius: 22px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-weight: 700;
-            font-size: 14px;
-            cursor: pointer;
-            z-index: 10;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.3);
-            border: none;
-        }
-
-        /* Bottom Tab Bar */
-        .tab-bar {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: 80px;
-            background: var(--paper);
+        .mobile-tab-bar {
+            position: fixed; bottom: 0; left: 0; right: 0;
+            height: 80px; background: var(--paper);
             border-top: 1px solid var(--hairline);
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-            padding-bottom: 20px;
-            z-index: 50;
+            display: flex; justify-content: space-around; align-items: center;
+            padding-bottom: 20px; z-index: 50;
         }
 
         .tab {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 4px;
-            color: var(--ink3);
-            font-size: 10px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.3px;
-            cursor: pointer;
+            display: flex; flex-direction: column; align-items: center; gap: 4px;
+            color: var(--ink3); font-size: 10px; font-weight: 600;
+            text-transform: uppercase; letter-spacing: 0.3px; cursor: pointer;
         }
 
-        .tab.active {
-            color: var(--ink);
-        }
+        .tab.active { color: var(--ink); }
 
-        #loading {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            color: white;
-            font-size: 1.2rem;
-            z-index: 100;
+        /* ─────────────────────────────────────────────
+           DESKTOP LAYOUT  (≥ 900px)
+        ───────────────────────────────────────────── */
+        #desktop-app { display: none; }
+
+        @media (min-width: 900px) {
+            body { overflow: hidden; }
+
+            #mobile-feed    { display: none; }
+            .mobile-tab-bar { display: none; }
+
+            #desktop-app {
+                display: flex; height: 100vh; overflow: hidden;
+            }
+
+            /* ── Left sidebar ── */
+            #sidebar {
+                width: 240px; flex-shrink: 0;
+                border-right: 1px solid var(--hairline);
+                display: flex; flex-direction: column;
+                padding: 24px 18px; gap: 4px;
+                overflow-y: auto;
+            }
+
+            .sidebar-logo {
+                display: flex; align-items: center; gap: 10px;
+                padding: 4px 8px 22px;
+            }
+
+            .sidebar-wordmark {
+                font-size: 16px; font-weight: 600; letter-spacing: -0.3px;
+                color: var(--ink);
+            }
+
+            .nav-item {
+                display: flex; align-items: center; gap: 12px;
+                padding: 10px 12px; border-radius: 12px;
+                color: var(--ink2); font-size: 14px; font-weight: 500;
+                cursor: pointer; transition: background 0.12s;
+                border: none; background: transparent; width: 100%;
+                font-family: 'Inter', sans-serif; text-align: left;
+            }
+
+            .nav-item:hover { background: var(--raised); color: var(--ink); }
+            .nav-item.active { background: var(--raised); color: var(--ink); font-weight: 600; }
+
+            .section-label {
+                font-family: 'JetBrains Mono', monospace;
+                font-size: 10px; color: var(--ink3);
+                letter-spacing: 1px; text-transform: uppercase;
+                padding: 8px 12px 6px; margin-top: 14px;
+            }
+
+            .sidebar-topic {
+                display: flex; align-items: center; gap: 10px;
+                padding: 7px 12px; font-size: 13px; color: var(--ink2);
+            }
+
+            .level-bars { display: flex; align-items: flex-end; gap: 2px; }
+            .level-bar {
+                width: 3px; border-radius: 1.5px;
+                background: var(--hairline-strong);
+            }
+            .level-bar.filled { background: var(--ink2); }
+
+            /* ── Center feed ── */
+            #feed-center {
+                flex: 1; display: flex;
+                align-items: center; justify-content: center;
+                padding: 24px 32px; overflow: hidden;
+            }
+
+            #video-frame-wrapper {
+                position: relative;
+                width: 380px; height: 676px; flex-shrink: 0;
+            }
+
+            #video-card {
+                width: 380px; height: 676px;
+                border-radius: 22px; overflow: hidden;
+                position: relative;
+                box-shadow: 0 20px 60px rgba(0,0,0,0.22);
+                background: #000;
+            }
+
+            #video-card video {
+                width: 100%; height: 100%; object-fit: cover;
+            }
+
+            #desktop-scrim {
+                position: absolute; inset: 0;
+                background: linear-gradient(180deg, transparent 40%, rgba(0,0,0,0.65) 100%);
+                pointer-events: none; z-index: 1;
+            }
+
+            #desktop-progress {
+                position: absolute; top: 14px; left: 14px; right: 14px;
+                display: flex; gap: 4px; z-index: 10;
+            }
+
+            .progress-seg {
+                flex: 1; height: 2.5px; border-radius: 2px;
+                background: rgba(255,255,255,0.25); overflow: hidden;
+            }
+
+            .progress-fill { height: 100%; background: #fff; }
+
+            #desktop-top-meta {
+                position: absolute; top: 32px; left: 14px; right: 14px;
+                display: flex; gap: 8px; z-index: 10;
+            }
+
+            #desktop-bottom-info {
+                position: absolute; left: 18px; right: 18px; bottom: 24px;
+                z-index: 10; color: #fff;
+            }
+
+            #desktop-ask-ai {
+                position: absolute; right: 14px; bottom: 24px;
+                display: none; /* hidden on desktop, shown via right panel */
+            }
+
+            /* Nav arrows — outside the card, relative to wrapper */
+            #nav-arrows {
+                position: absolute; right: -52px; top: 50%;
+                transform: translateY(-50%);
+                display: flex; flex-direction: column; gap: 10px;
+            }
+
+            .nav-arrow {
+                width: 40px; height: 40px; border-radius: 20px;
+                border: 1px solid var(--hairline); background: var(--card);
+                color: var(--ink2); cursor: pointer;
+                display: flex; align-items: center; justify-content: center;
+                transition: background 0.12s, color 0.12s;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            }
+
+            .nav-arrow:hover { background: var(--raised); color: var(--ink); }
+
+            /* Action rail */
+            #action-rail {
+                margin-left: 72px;
+                display: flex; flex-direction: column;
+                gap: 18px; align-items: center;
+                color: var(--ink2);
+            }
+
+            .desktop-action {
+                display: flex; flex-direction: column;
+                align-items: center; gap: 4px; cursor: pointer;
+            }
+
+            .desktop-action-icon {
+                width: 44px; height: 44px; border-radius: 22px;
+                background: var(--card); border: 1px solid var(--hairline);
+                display: flex; align-items: center; justify-content: center;
+                color: var(--ink); transition: background 0.12s;
+            }
+
+            .desktop-action-icon:hover { background: var(--raised); }
+            .desktop-action-icon.liked  { color: var(--brand); }
+
+            .desktop-action-label {
+                font-family: 'JetBrains Mono', monospace;
+                font-size: 10px; color: var(--ink3);
+            }
+
+            /* ── Right AI panel ── */
+            #ai-panel {
+                width: 360px; flex-shrink: 0;
+                border-left: 1px solid var(--hairline);
+                display: flex; flex-direction: column;
+            }
+
+            #ai-panel-header {
+                padding: 20px 22px;
+                border-bottom: 1px solid var(--hairline);
+                display: flex; align-items: center; gap: 10px;
+                flex-shrink: 0;
+            }
+
+            .ai-avatar {
+                width: 32px; height: 32px; border-radius: 16px;
+                background: var(--brand); color: var(--brand-ink);
+                display: flex; align-items: center; justify-content: center;
+                flex-shrink: 0;
+            }
+
+            #ai-chat {
+                flex: 1; overflow-y: auto;
+                padding: 16px 18px;
+                display: flex; flex-direction: column; gap: 12px;
+            }
+
+            .ai-bubble {
+                max-width: 82%; padding: 10px 14px;
+                font-size: 13px; line-height: 1.55;
+            }
+
+            .ai-bubble.ai {
+                background: var(--raised); color: var(--ink);
+                border-radius: 4px 16px 16px 16px;
+                align-self: flex-start;
+            }
+
+            .ai-bubble.user {
+                background: var(--ink); color: var(--paper);
+                border-radius: 16px 4px 16px 16px;
+                align-self: flex-end;
+            }
+
+            #ai-suggestions {
+                padding: 8px 14px 12px;
+                display: flex; gap: 6px; flex-wrap: wrap;
+                flex-shrink: 0;
+            }
+
+            .suggestion-chip {
+                padding: 7px 12px; border-radius: 14px;
+                background: var(--raised); color: var(--ink);
+                font-size: 12px; font-weight: 500; cursor: pointer;
+                border: none; font-family: 'Inter', sans-serif;
+                transition: background 0.12s;
+            }
+
+            .suggestion-chip:hover { background: var(--hairline-strong); }
+
+            #ai-input-row {
+                padding: 4px 14px 18px;
+                display: flex; gap: 8px; flex-shrink: 0;
+            }
+
+            .ai-text-input {
+                flex: 1; height: 40px; border-radius: 20px;
+                background: var(--raised); border: none;
+                padding: 0 14px; font-size: 13px; color: var(--ink);
+                font-family: 'Inter', sans-serif; outline: none;
+            }
+
+            .ai-text-input::placeholder { color: var(--ink3); }
+
+            .ai-mic-btn {
+                width: 40px; height: 40px; border-radius: 20px;
+                border: none; cursor: pointer; flex-shrink: 0;
+                background: var(--brand); color: var(--brand-ink);
+                display: flex; align-items: center; justify-content: center;
+                transition: opacity 0.12s;
+            }
+
+            .ai-mic-btn:hover { opacity: 0.85; }
         }
     </style>
 </head>
 <body>
-    <div id="loading">Connecting to database...</div>
-    <div id="video-container"></div>
+    <div id="loading">Connecting to database…</div>
 
-    <div class="tab-bar">
+    <!-- ════════════════════════════════════════════
+         MOBILE LAYOUT
+    ════════════════════════════════════════════ -->
+    <div id="mobile-feed"></div>
+
+    <div class="mobile-tab-bar">
         <div class="tab active">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M4 11l8-7 8 7v9a1 1 0 0 1-1 1h-4v-6h-6v6H5a1 1 0 0 1-1-1z" /></svg>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M4 11l8-7 8 7v9a1 1 0 0 1-1 1h-4v-6h-6v6H5a1 1 0 0 1-1-1z"/></svg>
             Feed
         </div>
         <div class="tab">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="6.5" /><path d="M16 16l4 4" /></svg>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4 4"/></svg>
             Explore
         </div>
         <div class="tab">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><rect x="4" y="4" width="5" height="16" rx="1" /><rect x="11" y="6" width="5" height="14" rx="1" /><path d="M18 7l3 .8-3 12-3-.8z" /></svg>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><rect x="4" y="4" width="5" height="16" rx="1"/><rect x="11" y="6" width="5" height="14" rx="1"/><path d="M18 7l3 .8-3 12-3-.8z"/></svg>
             Library
         </div>
         <div class="tab">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="9" r="3.5" /><path d="M5 20c1-4 4-6 7-6s6 2 7 6" stroke-linecap="round" /></svg>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="9" r="3.5"/><path d="M5 20c1-4 4-6 7-6s6 2 7 6" stroke-linecap="round"/></svg>
             You
+        </div>
+    </div>
+
+    <!-- ════════════════════════════════════════════
+         DESKTOP LAYOUT
+    ════════════════════════════════════════════ -->
+    <div id="desktop-app">
+
+        <!-- Left sidebar -->
+        <div id="sidebar">
+            <!-- Logo lockup -->
+            <div class="sidebar-logo">
+                <svg width="28" height="28" viewBox="0 0 180 180" aria-hidden="true">
+                    <defs>
+                        <linearGradient id="swMarkGrad" x1="0" y1="0" x2="1" y2="1">
+                            <stop offset="0%"   stop-color="oklch(0.86 0.07 53)"/>
+                            <stop offset="100%" stop-color="oklch(0.72 0.10 53)"/>
+                        </linearGradient>
+                    </defs>
+                    <rect x="6" y="6" width="168" height="168" rx="44" fill="url(#swMarkGrad)"/>
+                    <g transform="translate(46 50)">
+                        <rect x="0"  y="48" width="18" height="44" rx="6" fill="#FAF7F2" opacity="0.55"/>
+                        <rect x="32" y="26" width="18" height="66" rx="6" fill="#FAF7F2" opacity="0.78"/>
+                        <rect x="64" y="0"  width="18" height="92" rx="6" fill="#FAF7F2"/>
+                    </g>
+                    <path d="M122 96 L122 128 L146 112 Z" fill="oklch(0.42 0.10 53)" opacity="0.85"/>
+                </svg>
+                <span class="sidebar-wordmark">ScrollWork</span>
+            </div>
+
+            <!-- Navigation -->
+            <button class="nav-item active">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M4 11l8-7 8 7v9a1 1 0 0 1-1 1h-4v-6h-6v6H5a1 1 0 0 1-1-1z"/></svg>
+                Feed
+            </button>
+            <button class="nav-item">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4 4"/></svg>
+                Explore
+            </button>
+            <button class="nav-item">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><rect x="4" y="4" width="5" height="16" rx="1"/><rect x="11" y="6" width="5" height="14" rx="1"/><path d="M18 7l3 .8-3 12-3-.8z"/></svg>
+                Library
+            </button>
+            <button class="nav-item">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="9" r="3.5"/><path d="M5 20c1-4 4-6 7-6s6 2 7 6" stroke-linecap="round"/></svg>
+                Profile
+            </button>
+
+            <!-- Your level -->
+            <div class="section-label">Your level</div>
+            <div class="sidebar-topic">
+                <div class="level-bars">
+                    <div class="level-bar filled" style="height:6px;"></div>
+                    <div class="level-bar" style="height:9px;"></div>
+                    <div class="level-bar" style="height:13px;"></div>
+                </div>
+                <span>Computer Science</span>
+            </div>
+            <div class="sidebar-topic">
+                <div class="level-bars">
+                    <div class="level-bar filled" style="height:6px;"></div>
+                    <div class="level-bar filled" style="height:9px;"></div>
+                    <div class="level-bar" style="height:13px;"></div>
+                </div>
+                <span>Mechanical Eng.</span>
+            </div>
+            <div class="sidebar-topic">
+                <div class="level-bars">
+                    <div class="level-bar filled" style="height:6px;"></div>
+                    <div class="level-bar" style="height:9px;"></div>
+                    <div class="level-bar" style="height:13px;"></div>
+                </div>
+                <span>Electrical Eng.</span>
+            </div>
+            <div class="sidebar-topic">
+                <div class="level-bars">
+                    <div class="level-bar filled" style="height:6px;"></div>
+                    <div class="level-bar" style="height:9px;"></div>
+                    <div class="level-bar" style="height:13px;"></div>
+                </div>
+                <span>Cardiology</span>
+            </div>
+        </div>
+
+        <!-- Center feed -->
+        <div id="feed-center">
+            <!-- Phone-frame wrapper (arrows positioned relative to this) -->
+            <div id="video-frame-wrapper">
+                <div id="video-card">
+                    <video id="desktop-video" loop playsinline></video>
+                    <div id="desktop-scrim"></div>
+
+                    <!-- Progress bars -->
+                    <div id="desktop-progress">
+                        <div class="progress-seg"><div class="progress-fill" style="width:100%"></div></div>
+                        <div class="progress-seg"><div class="progress-fill" style="width:100%"></div></div>
+                        <div class="progress-seg"><div class="progress-fill" style="width:40%"></div></div>
+                        <div class="progress-seg"><div class="progress-fill" style="width:0%"></div></div>
+                        <div class="progress-seg"><div class="progress-fill" style="width:0%"></div></div>
+                    </div>
+
+                    <!-- Chips -->
+                    <div id="desktop-top-meta"></div>
+
+                    <!-- Bottom info -->
+                    <div id="desktop-bottom-info"></div>
+                </div>
+
+                <!-- Navigation arrows (outside the overflow:hidden card) -->
+                <div id="nav-arrows">
+                    <button class="nav-arrow" id="btn-prev" aria-label="Previous video">
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M3 9l4-4 4 4"/>
+                        </svg>
+                    </button>
+                    <button class="nav-arrow" id="btn-next" aria-label="Next video">
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M3 5l4 4 4-4"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Action rail -->
+            <div id="action-rail">
+                <div class="desktop-action" id="action-heart">
+                    <div class="desktop-action-icon liked">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.5-7 10-7 10z"/></svg>
+                    </div>
+                    <span class="desktop-action-label">12.4k</span>
+                </div>
+                <div class="desktop-action">
+                    <div class="desktop-action-icon">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M6 4h12v17l-6-4-6 4z"/></svg>
+                    </div>
+                    <span class="desktop-action-label">Save</span>
+                </div>
+                <div class="desktop-action">
+                    <div class="desktop-action-icon">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M4 5h16v12H8l-4 3z"/></svg>
+                    </div>
+                    <span class="desktop-action-label">142</span>
+                </div>
+                <div class="desktop-action">
+                    <div class="desktop-action-icon">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v13M7 8l5-5 5 5M5 14v6h14v-6"/></svg>
+                    </div>
+                    <span class="desktop-action-label">Share</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Ask AI panel -->
+        <div id="ai-panel">
+            <div id="ai-panel-header">
+                <div class="ai-avatar">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2l1.6 5.4L19 9l-5.4 1.6L12 16l-1.6-5.4L5 9l5.4-1.6z"/>
+                        <path d="M19 14l.9 2.1L22 17l-2.1.9L19 20l-.9-2.1L16 17l2.1-.9z" opacity=".6"/>
+                    </svg>
+                </div>
+                <div>
+                    <div style="font-size:14px;font-weight:600;">Ask AI</div>
+                    <div style="font-size:11px;color:var(--ink2);font-family:'JetBrains Mono',monospace;">about this video</div>
+                </div>
+            </div>
+
+            <div id="ai-chat">
+                <div class="ai-bubble ai">
+                    I can explain any concept from this video, give real-world examples, or quiz you on what you've learned.
+                </div>
+            </div>
+
+            <div id="ai-suggestions">
+                <button class="suggestion-chip">Real example?</button>
+                <button class="suggestion-chip">Quiz me</button>
+                <button class="suggestion-chip">Simpler please</button>
+            </div>
+
+            <div id="ai-input-row">
+                <input class="ai-text-input" type="text" placeholder="Ask anything…" id="ai-input">
+                <button class="ai-mic-btn" aria-label="Voice input">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+                        <rect x="9" y="3" width="6" height="11" rx="3"/>
+                        <path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>
+                    </svg>
+                </button>
+            </div>
         </div>
     </div>
 
     <script>
         const SUPABASE_URL = 'https://iurpjzlajsefupcyluqy.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_6PrktCe9nmZEMkuu116nmQ_EG9am4LS';
-        
         const sbClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        const container = document.getElementById('video-container');
-        const loading = document.getElementById('loading');
+
+        let allVideos = [];
+        let currentIndex = 0;
 
         const icons = {
-            heart: `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"><path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.5-7 10-7 10z" /></svg>`,
-            bookmark: `<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"><path d="M6 4h12v17l-6-4-6 4z" /></svg>`,
-            comment: `<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"><path d="M4 5h16v12H8l-4 3z" /></svg>`,
-            share: `<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v13M7 8l5-5 5 5M5 14v6h14v-6" /></svg>`,
-            sparkle: `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.6 5.4L19 9l-5.4 1.6L12 16l-1.6-5.4L5 9l5.4-1.6z"/><path d="M19 14l.9 2.1L22 17l-2.1.9L19 20l-.9-2.1L16 17l2.1-.9z" opacity=".6"/></svg>`
+            heart:    `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"><path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.5-7 10-7 10z"/></svg>`,
+            bookmark: `<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"><path d="M6 4h12v17l-6-4-6 4z"/></svg>`,
+            comment:  `<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"><path d="M4 5h16v12H8l-4 3z"/></svg>`,
+            share:    `<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v13M7 8l5-5 5 5M5 14v6h14v-6"/></svg>`,
+            sparkle:  `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.6 5.4L19 9l-5.4 1.6L12 16l-1.6-5.4L5 9l5.4-1.6z"/><path d="M19 14l.9 2.1L22 17l-2.1.9L19 20l-.9-2.1L16 17l2.1-.9z" opacity=".6"/></svg>`,
         };
 
+        function videoUrl(vid) {
+            return vid.video_url || `https://iurpjzlajsefupcyluqy.supabase.co/storage/v1/object/public/CS-Videos/videos/${vid.video_filename}`;
+        }
+
+        /* ── Data fetch ── */
         async function fetchVideos() {
             try {
                 const { data, error } = await sbClient
@@ -280,84 +663,98 @@
                     .order('id', { ascending: true });
 
                 if (error) throw error;
-                
-                loading.style.display = 'none';
-                renderVideos(data);
-                setupIntersectionObserver();
+
+                allVideos = data;
+                document.getElementById('loading').style.display = 'none';
+
+                if (window.innerWidth >= 900) {
+                    renderDesktopVideo(0);
+                } else {
+                    renderMobileFeed();
+                    setupMobileObserver();
+                }
             } catch (err) {
-                console.error("Error fetching data:", err);
-                loading.innerText = "Failed to load database records.";
+                console.error('Fetch error:', err);
+                document.getElementById('loading').innerText = 'Failed to load videos.';
             }
         }
 
-        function renderVideos(videos) {
-            videos.forEach((vid, index) => {
+        /* ── Desktop ── */
+        function renderDesktopVideo(index) {
+            if (!allVideos.length) return;
+            currentIndex = Math.max(0, Math.min(index, allVideos.length - 1));
+            const vid = allVideos[currentIndex];
+
+            const videoEl = document.getElementById('desktop-video');
+            videoEl.src = videoUrl(vid);
+            videoEl.load();
+            videoEl.play().catch(() => {});
+
+            document.getElementById('desktop-top-meta').innerHTML = `
+                <div class="chip">${vid.difficulty || 'Beginner'}</div>
+                <div class="chip">${vid.field || 'CS'}</div>
+            `;
+
+            document.getElementById('desktop-bottom-info').innerHTML = `
+                <div style="font-size:20px;font-weight:600;letter-spacing:-0.2px;line-height:1.25;text-shadow:0 1px 6px rgba(0,0,0,0.4);">
+                    ${vid.category || 'Computer Science'}
+                </div>
+                <div style="margin-top:6px;font-size:13px;opacity:0.85;">
+                    A highly technical breakdown of the concepts within ${vid.category || 'CS'}.
+                </div>
+            `;
+
+            document.getElementById('btn-prev').disabled = currentIndex === 0;
+            document.getElementById('btn-next').disabled = currentIndex === allVideos.length - 1;
+        }
+
+        document.getElementById('btn-prev').addEventListener('click', () => renderDesktopVideo(currentIndex - 1));
+        document.getElementById('btn-next').addEventListener('click', () => renderDesktopVideo(currentIndex + 1));
+
+        document.addEventListener('keydown', e => {
+            if (window.innerWidth < 900) return;
+            if (e.key === 'ArrowUp')   renderDesktopVideo(currentIndex - 1);
+            if (e.key === 'ArrowDown') renderDesktopVideo(currentIndex + 1);
+        });
+
+        /* ── Mobile ── */
+        function renderMobileFeed() {
+            const container = document.getElementById('mobile-feed');
+            allVideos.forEach(vid => {
                 const div = document.createElement('div');
                 div.className = 'video-item';
-                div.dataset.index = index;
-
-                const videoUrl = vid.video_url || `https://iurpjzlajsefupcyluqy.supabase.co/storage/v1/object/public/CS-Videos/videos/${vid.video_filename}`;
-                
                 div.innerHTML = `
-                    <video data-src="${videoUrl}" loop playsinline preload="none"></video>
+                    <video data-src="${videoUrl(vid)}" loop playsinline preload="none"></video>
                     <div class="scrim"></div>
-                    
                     <div class="top-meta">
-                        <div class="chip">
-                            ${vid.difficulty}
-                        </div>
-                        <div class="chip">
-                            ${vid.field || 'CS'}
-                        </div>
+                        <div class="chip">${vid.difficulty}</div>
+                        <div class="chip">${vid.field || 'CS'}</div>
                     </div>
-
-                    <div class="right-rail">
-                        <div class="action-btn">
-                            ${icons.heart}
-                            <span>12.4k</span>
-                        </div>
-                        <div class="action-btn">
-                            ${icons.bookmark}
-                            <span>Save</span>
-                        </div>
-                        <div class="action-btn">
-                            ${icons.comment}
-                            <span>142</span>
-                        </div>
-                        <div class="action-btn">
-                            ${icons.share}
-                            <span>Share</span>
-                        </div>
+                    <div class="mobile-rail">
+                        <button class="action-btn">${icons.heart}<span>12.4k</span></button>
+                        <button class="action-btn">${icons.bookmark}<span>Save</span></button>
+                        <button class="action-btn">${icons.comment}<span>142</span></button>
+                        <button class="action-btn">${icons.share}<span>Share</span></button>
                     </div>
-
                     <div class="bottom-info">
                         <div class="author-row">
                             <div class="author-avatar">S</div>
-                            <span style="font-weight: 700; font-size: 13px;">ScrollWork Creator</span>
-                            <span style="font-family: 'JetBrains Mono'; font-size: 11px; opacity: 0.7;">· follow</span>
+                            <span style="font-weight:700;font-size:13px;">ScrollWork Creator</span>
+                            <span style="font-family:'JetBrains Mono';font-size:11px;opacity:0.7;">· follow</span>
                         </div>
                         <h2 class="video-title">${vid.category || 'Computer Science'}</h2>
                         <p class="video-desc">A highly technical breakdown of the concepts within ${vid.category || 'CS'}.</p>
                     </div>
-
-                    <button class="ask-ai">
-                        ${icons.sparkle}
-                        Ask AI
-                    </button>
+                    <button class="ask-ai-btn">${icons.sparkle} Ask AI</button>
                 `;
-
-                div.addEventListener('click', (e) => {
-                    if(e.target.closest('.ask-ai') || e.target.closest('.action-btn')) return;
-                    const video = div.querySelector('video');
-                    video.paused ? video.play() : video.pause();
-                });
-
                 container.appendChild(div);
             });
         }
 
-        function setupIntersectionObserver() {
-            const preloader = new IntersectionObserver((entries) => {
+        function setupMobileObserver() {
+            const container = document.getElementById('mobile-feed');
+
+            const preloader = new IntersectionObserver(entries => {
                 entries.forEach(entry => {
                     if (entry.isIntersecting) {
                         const video = entry.target.querySelector('video');
@@ -369,14 +766,14 @@
                 });
             }, { root: container, rootMargin: '150% 0px', threshold: 0 });
 
-            const player = new IntersectionObserver((entries) => {
+            const player = new IntersectionObserver(entries => {
                 entries.forEach(entry => {
                     const video = entry.target.querySelector('video');
                     if (entry.isIntersecting) {
-                        if (video.src) video.play().catch(e => console.log('Autoplay prevented'));
+                        if (video.src) video.play().catch(() => {});
                     } else {
                         video.pause();
-                        video.currentTime = 0; 
+                        video.currentTime = 0;
                     }
                 });
             }, { root: container, rootMargin: '0px', threshold: 0.6 });

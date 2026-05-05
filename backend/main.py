@@ -9,6 +9,9 @@ from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import pandas as pd
+from langchain_community.chat_models import ChatOllama
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.output_parsers import StrOutputParser
 
 app = FastAPI(title="Tik-Transcrip API")
 
@@ -101,29 +104,35 @@ def get_transcript(video_id: str):
     return {"text": "Transcript not available."}
 
 
+# --- LLM Setup ---
+llm = ChatOllama(model="minimax-m2.5:cloud")
+
+prompt = ChatPromptTemplate.from_messages([
+    ("system", "You are an academic AI tutor for the ScrollWork learning platform. Your goal is to guide the student toward understanding the material through Socratic questioning and clear, concise explanations. Do not just give away the answer directly if it's a conceptual question; encourage the student to think. Use the following transcript from the current video as context to answer the student's question. If the answer cannot be found in or inferred from the transcript, rely on your general academic knowledge but keep it relevant to the topic.\n\nVideo Transcript Context:\n{context}"),
+    ("human", "{question}")
+])
+
+chain = prompt | llm | StrOutputParser()
+
 @app.post("/api/chat")
 def chat(req: ChatRequest):
-    question = req.question.lower()
+    context = req.transcript_snippet
+    
+    # If no snippet provided, try to fetch the full transcript
+    if not context and req.video_id:
+        transcript_data = get_transcript(req.video_id)
+        context = transcript_data.get("text", "")
+        
+    if not context:
+        context = "No specific transcript context available."
 
-    # Socratic-style responses — guides the student rather than just answering
-    socratic = [
-        "Interesting question. What do you think would happen if we doubled the input size? How would that change the number of operations?",
-        "Before I answer that — can you tell me what you already understand about this concept? Let's build from there.",
-        "That's the right instinct. Try thinking about it this way: if you had to explain this to a 5-year-old, what analogy would you use?",
-        "Good question. Let me flip it: why do you think this approach was chosen over the alternatives? What trade-offs do you see?",
-        "You're on the right track. Consider: what's the simplest possible case of this problem? Start there and work upward.",
-    ]
-
-    if "why" in question:
-        answer = "That's the key question. Think about what problem this solves — if we didn't use this approach, what would break? The 'why' often reveals the constraint we're working around."
-    elif "what" in question:
-        answer = "Let me answer your question with a question: based on what you just watched, how would you define this concept in your own words? I'll help refine your understanding."
-    elif "how" in question:
-        answer = "Great 'how' question. Try to decompose it: what are the individual steps? If you can identify step 1, I can help you connect the rest."
-    elif "explain" in question:
-        answer = "Sure. Think of it like this: the core idea is about breaking a big problem into smaller, identical sub-problems. Each sub-problem is easier to solve, and the solutions combine into the final answer."
-    else:
-        answer = random.choice(socratic)
+    try:
+        answer = chain.invoke({
+            "context": context,
+            "question": req.question
+        })
+    except Exception as e:
+        answer = f"I'm sorry, I encountered an error while thinking about your question. ({str(e)})"
 
     return {"answer": answer}
 

@@ -1,13 +1,13 @@
 {
   "expo": {
-    "name": "Tik-Transcrip",
-    "slug": "tik-transcrip",
+    "name": "ScrollWork",
+    "slug": "scrollwork",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
-    "scheme": "tiktranscrip",
+    "scheme": "scrollwork",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",

@@ -1,5 +1,29 @@
 import React from 'react';
-import Svg, { Path, Circle, Rect } from 'react-native-svg';
+import Svg, { Path, Circle, Rect, G, Defs, LinearGradient, Stop } from 'react-native-svg';
+
+// The ScrollWork logo mark — squircle with ascending bars + play triangle
+export function SWLogoMark({ size = 40 }: { size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 180 180">
+      <Defs>
+        <LinearGradient id="swMark" x1="0" y1="0" x2="1" y2="1">
+          <Stop offset="0%" stopColor="#FEE6D8" />
+          <Stop offset="100%" stopColor="#DCAE9A" />
+        </LinearGradient>
+      </Defs>
+      {/* Squircle plate */}
+      <Rect x="6" y="6" width="168" height="168" rx="44" fill="url(#swMark)" />
+      {/* Three ascending bars — difficulty metaphor */}
+      <G>
+        <Rect x="46" y="98"  width="18" height="44" rx="6" fill="#FAF7F2" opacity={0.55} />
+        <Rect x="78" y="76"  width="18" height="66" rx="6" fill="#FAF7F2" opacity={0.78} />
+        <Rect x="110" y="50" width="18" height="92" rx="6" fill="#FAF7F2" />
+      </G>
+      {/* Play triangle nested in the tallest bar */}
+      <Path d="M122 96 L122 128 L146 112 Z" fill="#8C4A2A" opacity={0.85} />
+    </Svg>
+  );
+}
 
 export const SWIcon = {
   heart: (s = 22, color = "currentColor", fill = "none") => (

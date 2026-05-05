@@ -15,7 +15,7 @@ export default function Onboarding() {
 
   const fields = [
     { id: 'CS', name: 'Computer Science', icon: SWIcon.search },
-    { id: 'Medical', name: 'Cardiology', icon: SWIcon.heart },
+    { id: 'Medical', name: 'Medical', icon: SWIcon.heart },
     { id: 'EE', name: 'Electrical Eng.', icon: SWIcon.sparkle },
     { id: 'Aerospace', name: 'Aerospace', icon: SWIcon.sparkle },
   ];

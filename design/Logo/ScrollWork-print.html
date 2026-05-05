@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>ScrollWork — Print</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  html, body { margin: 0; padding: 0; background: #f0eee9; font-family: "Inter", system-ui, sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; color-adjust: exact; }
+  * { box-sizing: border-box; }
+
+  .page {
+    width: 100%;
+    min-height: 100vh;
+    padding: 36px 48px;
+    display: flex;
+    flex-direction: column;
+    break-after: page;
+    page-break-after: always;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .page:last-child { break-after: auto; page-break-after: auto; }
+
+  .section-title {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    color: rgba(40,30,20,0.55);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .section-name {
+    font-family: "Inter", sans-serif;
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: -0.4px;
+    color: rgba(40,30,20,0.9);
+    margin-bottom: 2px;
+  }
+  .section-subtitle {
+    font-family: "Inter", sans-serif;
+    font-size: 13px;
+    color: rgba(60,50,40,0.6);
+    margin-bottom: 18px;
+  }
+
+  .row { display: flex; gap: 28px; flex-wrap: wrap; align-items: flex-start; justify-content: center; }
+  .ab { display: flex; flex-direction: column; align-items: center; }
+  .ab-label {
+    font-family: "Inter", sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    color: rgba(60,50,40,0.7);
+    margin-bottom: 8px;
+  }
+  .ab-card {
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,.08), 0 4px 16px rgba(0,0,0,.06);
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+
+  @page { size: A3 landscape; margin: 0.5cm; }
+  @media print {
+    html, body { background: #f0eee9; }
+    .page { min-height: auto; height: 100vh; padding: 18px 24px; }
+  }
+</style>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" src="ios-frame.jsx"></script>
+<script type="text/babel" src="browser-window.jsx"></script>
+<script type="text/babel" src="tokens.jsx"></script>
+<script type="text/babel" src="mobile-onboarding.jsx"></script>
+<script type="text/babel" src="mobile-feed.jsx"></script>
+<script type="text/babel" src="mobile-chat.jsx"></script>
+<script type="text/babel" src="mobile-library.jsx"></script>
+<script type="text/babel" src="web-screens.jsx"></script>
+
+<script type="text/babel">
+const c = SW_LIGHT;
+const dark = false;
+
+// Phone scale to fit A3 landscape page comfortably (3 wide @ 0.55)
+const PHONE_SCALE = 0.55;
+const PHONE_W = 390, PHONE_H = 844;
+
+function PhoneArtboard({ label, El }) {
+  return (
+    <div className="ab">
+      <div className="ab-label">{label}</div>
+      <div className="ab-card" style={{
+        width: PHONE_W * PHONE_SCALE,
+        height: PHONE_H * PHONE_SCALE,
+        position: 'relative',
+        background: 'transparent',
+        boxShadow: 'none',
+        borderRadius: 0,
+      }}>
+        <div style={{
+          width: PHONE_W, height: PHONE_H,
+          transform: `scale(${PHONE_SCALE})`, transformOrigin: 'top left',
+          position: 'absolute', top: 0, left: 0,
+        }}>
+          <IOSDevice dark={dark} width={PHONE_W} height={PHONE_H}>
+            <El c={c} dark={dark} />
+          </IOSDevice>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const WEB_SCALE = 0.62;
+const WEB_W = 1280, WEB_H = 780;
+function WebArtboard({ label, url, El }) {
+  return (
+    <div className="ab">
+      <div className="ab-label">{label}</div>
+      <div className="ab-card" style={{
+        width: WEB_W * WEB_SCALE,
+        height: WEB_H * WEB_SCALE,
+        position: 'relative',
+        background: 'transparent',
+        boxShadow: 'none',
+        borderRadius: 0,
+      }}>
+        <div style={{
+          width: WEB_W, height: WEB_H,
+          transform: `scale(${WEB_SCALE})`, transformOrigin: 'top left',
+          position: 'absolute', top: 0, left: 0,
+        }}>
+          <ChromeWindow tabs={[{ title: 'ScrollWork' }]} url={url} width={WEB_W} height={WEB_H}>
+            <El c={c} dark={dark} />
+          </ChromeWindow>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Page({ tag, title, subtitle, children }) {
+  return (
+    <div className="page">
+      <div className="section-title">{tag}</div>
+      <div className="section-name">{title}</div>
+      <div className="section-subtitle">{subtitle}</div>
+      <div className="row" style={{ flex: 1, alignItems: 'center' }}>{children}</div>
+    </div>
+  );
+}
+
+function App() {
+  return (
+    <>
+      <Page tag="ScrollWork · 01" title="Mobile · Onboarding" subtitle="Level pick — three takes">
+        <PhoneArtboard label="A · Welcome" El={SWOnboardLevelC} />
+        <PhoneArtboard label="B · Single level" El={SWOnboardLevelA} />
+        <PhoneArtboard label="C · Per-topic level" El={SWOnboardLevelB} />
+      </Page>
+
+      <Page tag="ScrollWork · 02" title="Mobile · Home feed" subtitle="Reels-style vertical player">
+        <PhoneArtboard label="A · Playing" El={SWFeedA} />
+        <PhoneArtboard label="B · Mid-scroll hint" El={SWFeedB} />
+        <PhoneArtboard label="C · Quick-check quiz" El={SWFeedC} />
+      </Page>
+
+      <Page tag="ScrollWork · 03" title="Mobile · Ask AI" subtitle="Bottom-sheet chat over the video">
+        <PhoneArtboard label="A · Chat thread" El={SWChatA} />
+        <PhoneArtboard label="B · First open" El={SWChatB} />
+        <PhoneArtboard label="C · Voice mode" El={SWChatC} />
+      </Page>
+
+      <Page tag="ScrollWork · 04" title="Mobile · Library" subtitle="Saves & playlists">
+        <PhoneArtboard label="A · Playlists grid" El={SWLibraryA} />
+        <PhoneArtboard label="B · Playlist detail" El={SWLibraryB} />
+        <PhoneArtboard label="C · Recent + AI suggestion" El={SWLibraryC} />
+      </Page>
+
+      <Page tag="ScrollWork · 05" title="Web · Home feed" subtitle="Centered video, side rails">
+        <WebArtboard label="A · Desktop with Ask AI panel" url="scrollwork.app/feed" El={SWWebFeedA} />
+      </Page>
+
+      <Page tag="ScrollWork · 06" title="Web · Explore" subtitle="Search, filter, browse">
+        <WebArtboard label="A · Picked for you" url="scrollwork.app/explore" El={SWWebExplore} />
+      </Page>
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+
+// Auto-print after fonts and JSX have loaded
+(async () => {
+  try { if (document.fonts && document.fonts.ready) await document.fonts.ready; } catch (e) {}
+  await new Promise(r => setTimeout(r, 800));
+  window.print();
+})();
+</script>
+</body>
+</html>

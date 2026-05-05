@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ScrollWork Feed</title>
+    <!-- Include Supabase JS Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --paper: #FAF7F2;
+            --card: #FFFFFF;
+            --raised: #F3EFE7;
+            --ink: #1F1B17;
+            --ink2: #5A544C;
+            --ink3: #8C857B;
+            --hairline: rgba(28,24,20,0.08);
+            --brand: #DCAE9A;
+            --brandInk: #FFFFFF;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --paper: #15130F;
+                --card: #1E1B16;
+                --raised: #2A2620;
+                --ink: #F2EEE6;
+                --ink2: #B8B0A2;
+                --ink3: #7C7468;
+                --hairline: rgba(255,247,230,0.08);
+                --brand: #EBB9A3;
+                --brandInk: #1A1612;
+            }
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            background-color: #000;
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+            color: var(--ink);
+        }
+        
+        #video-container {
+            height: 100vh;
+            overflow-y: scroll;
+            scroll-snap-type: y mandatory;
+        }
+
+        .video-item {
+            height: 100vh;
+            width: 100%;
+            scroll-snap-align: start;
+            position: relative;
+            background-color: #000;
+        }
+
+        video {
+            height: 100%;
+            width: 100%;
+            object-fit: cover;
+        }
+
+        .scrim {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 50vh;
+            background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0) 100%);
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .top-meta {
+            position: absolute;
+            top: 60px;
+            left: 16px;
+            display: flex;
+            gap: 8px;
+            z-index: 10;
+        }
+
+        .chip {
+            background: rgba(255,255,255,0.2);
+            backdrop-filter: blur(8px);
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .right-rail {
+            position: absolute;
+            right: 12px;
+            bottom: 180px;
+            display: flex;
+            flex-direction: column;
+            gap: 22px;
+            align-items: center;
+            z-index: 10;
+        }
+
+        .action-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            color: #fff;
+            text-shadow: 0 1px 4px rgba(0,0,0,0.5);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            cursor: pointer;
+        }
+
+        .action-btn svg {
+            filter: drop-shadow(0 2px 8px rgba(0,0,0,0.4));
+        }
+
+        .bottom-info {
+            position: absolute;
+            left: 16px;
+            right: 80px;
+            bottom: 116px;
+            z-index: 10;
+            color: #fff;
+            text-shadow: 0 1px 6px rgba(0,0,0,0.4);
+        }
+
+        .author-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .author-avatar {
+            width: 28px;
+            height: 28px;
+            border-radius: 14px;
+            background: rgba(255,255,255,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 12px;
+        }
+
+        .video-title {
+            font-size: 19px;
+            font-weight: 700;
+            margin: 0;
+            line-height: 1.2;
+        }
+
+        .video-desc {
+            font-size: 13px;
+            opacity: 0.85;
+            margin-top: 6px;
+            line-height: 1.4;
+        }
+
+        .ask-ai {
+            position: absolute;
+            right: 14px;
+            bottom: 116px;
+            background: var(--brand);
+            color: var(--brandInk);
+            height: 44px;
+            padding: 0 16px 0 12px;
+            border-radius: 22px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 700;
+            font-size: 14px;
+            cursor: pointer;
+            z-index: 10;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+            border: none;
+        }
+
+        /* Bottom Tab Bar */
+        .tab-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 80px;
+            background: var(--paper);
+            border-top: 1px solid var(--hairline);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding-bottom: 20px;
+            z-index: 50;
+        }
+
+        .tab {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            color: var(--ink3);
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            cursor: pointer;
+        }
+
+        .tab.active {
+            color: var(--ink);
+        }
+
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 1.2rem;
+            z-index: 100;
+        }
+    </style>
+</head>
+<body>
+    <div id="loading">Connecting to database...</div>
+    <div id="video-container"></div>
+
+    <div class="tab-bar">
+        <div class="tab active">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M4 11l8-7 8 7v9a1 1 0 0 1-1 1h-4v-6h-6v6H5a1 1 0 0 1-1-1z" /></svg>
+            Feed
+        </div>
+        <div class="tab">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="6.5" /><path d="M16 16l4 4" /></svg>
+            Explore
+        </div>
+        <div class="tab">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><rect x="4" y="4" width="5" height="16" rx="1" /><rect x="11" y="6" width="5" height="14" rx="1" /><path d="M18 7l3 .8-3 12-3-.8z" /></svg>
+            Library
+        </div>
+        <div class="tab">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="9" r="3.5" /><path d="M5 20c1-4 4-6 7-6s6 2 7 6" stroke-linecap="round" /></svg>
+            You
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://iurpjzlajsefupcyluqy.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_6PrktCe9nmZEMkuu116nmQ_EG9am4LS';
+        
+        const sbClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        const container = document.getElementById('video-container');
+        const loading = document.getElementById('loading');
+
+        const icons = {
+            heart: `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"><path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.5-7 10-7 10z" /></svg>`,
+            bookmark: `<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"><path d="M6 4h12v17l-6-4-6 4z" /></svg>`,
+            comment: `<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"><path d="M4 5h16v12H8l-4 3z" /></svg>`,
+            share: `<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v13M7 8l5-5 5 5M5 14v6h14v-6" /></svg>`,
+            sparkle: `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.6 5.4L19 9l-5.4 1.6L12 16l-1.6-5.4L5 9l5.4-1.6z"/><path d="M19 14l.9 2.1L22 17l-2.1.9L19 20l-.9-2.1L16 17l2.1-.9z" opacity=".6"/></svg>`
+        };
+
+        async function fetchVideos() {
+            try {
+                const { data, error } = await sbClient
+                    .from('cs_videos')
+                    .select('*')
+                    .order('id', { ascending: true });
+
+                if (error) throw error;
+                
+                loading.style.display = 'none';
+                renderVideos(data);
+                setupIntersectionObserver();
+            } catch (err) {
+                console.error("Error fetching data:", err);
+                loading.innerText = "Failed to load database records.";
+            }
+        }
+
+        function renderVideos(videos) {
+            videos.forEach((vid, index) => {
+                const div = document.createElement('div');
+                div.className = 'video-item';
+                div.dataset.index = index;
+
+                const videoUrl = vid.video_url || `https://iurpjzlajsefupcyluqy.supabase.co/storage/v1/object/public/CS-Videos/videos/${vid.video_filename}`;
+                
+                div.innerHTML = `
+                    <video data-src="${videoUrl}" loop playsinline preload="none"></video>
+                    <div class="scrim"></div>
+                    
+                    <div class="top-meta">
+                        <div class="chip">
+                            ${vid.difficulty}
+                        </div>
+                        <div class="chip">
+                            ${vid.field || 'CS'}
+                        </div>
+                    </div>
+
+                    <div class="right-rail">
+                        <div class="action-btn">
+                            ${icons.heart}
+                            <span>12.4k</span>
+                        </div>
+                        <div class="action-btn">
+                            ${icons.bookmark}
+                            <span>Save</span>
+                        </div>
+                        <div class="action-btn">
+                            ${icons.comment}
+                            <span>142</span>
+                        </div>
+                        <div class="action-btn">
+                            ${icons.share}
+                            <span>Share</span>
+                        </div>
+                    </div>
+
+                    <div class="bottom-info">
+                        <div class="author-row">
+                            <div class="author-avatar">S</div>
+                            <span style="font-weight: 700; font-size: 13px;">ScrollWork Creator</span>
+                            <span style="font-family: 'JetBrains Mono'; font-size: 11px; opacity: 0.7;">· follow</span>
+                        </div>
+                        <h2 class="video-title">${vid.category || 'Computer Science'}</h2>
+                        <p class="video-desc">A highly technical breakdown of the concepts within ${vid.category || 'CS'}.</p>
+                    </div>
+
+                    <button class="ask-ai">
+                        ${icons.sparkle}
+                        Ask AI
+                    </button>
+                `;
+
+                div.addEventListener('click', (e) => {
+                    if(e.target.closest('.ask-ai') || e.target.closest('.action-btn')) return;
+                    const video = div.querySelector('video');
+                    video.paused ? video.play() : video.pause();
+                });
+
+                container.appendChild(div);
+            });
+        }
+
+        function setupIntersectionObserver() {
+            const preloader = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const video = entry.target.querySelector('video');
+                        if (!video.src && video.dataset.src) {
+                            video.src = video.dataset.src;
+                            video.load();
+                        }
+                    }
+                });
+            }, { root: container, rootMargin: '150% 0px', threshold: 0 });
+
+            const player = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    const video = entry.target.querySelector('video');
+                    if (entry.isIntersecting) {
+                        if (video.src) video.play().catch(e => console.log('Autoplay prevented'));
+                    } else {
+                        video.pause();
+                        video.currentTime = 0; 
+                    }
+                });
+            }, { root: container, rootMargin: '0px', threshold: 0.6 });
+
+            document.querySelectorAll('.video-item').forEach(item => {
+                preloader.observe(item);
+                player.observe(item);
+            });
+        }
+
+        fetchVideos();
+    </script>
+</body>
+</html>

@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>ScrollWork — Mobile + Web design</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  html, body { margin: 0; padding: 0; background: #f0eee9; font-family: "Inter", system-ui, sans-serif; }
+  body { overflow: hidden; }
+  * { box-sizing: border-box; }
+</style>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="ios-frame.jsx"></script>
+<script type="text/babel" src="browser-window.jsx"></script>
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel" src="tokens.jsx"></script>
+<script type="text/babel" src="mobile-onboarding.jsx"></script>
+<script type="text/babel" src="mobile-feed.jsx"></script>
+<script type="text/babel" src="mobile-chat.jsx"></script>
+<script type="text/babel" src="mobile-library.jsx"></script>
+<script type="text/babel" src="web-screens.jsx"></script>
+
+<script type="text/babel">
+const SW_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "theme": "light",
+  "accentHue": 53
+}/*EDITMODE-END*/;
+
+// Wrap an iOS frame around a mobile screen
+function MobileShot({ children, dark, c, screenLabel }) {
+  return (
+    <div data-screen-label={screenLabel} style={{ position: 'relative' }}>
+      <IOSDevice dark={dark} width={390} height={844}>
+        {children}
+      </IOSDevice>
+    </div>
+  );
+}
+
+function App() {
+  const [tweaks, setTweak] = useTweaks(SW_DEFAULTS);
+  const dark = tweaks.theme === 'dark';
+  // Recompute palette when accent hue changes
+  const c = React.useMemo(() => {
+    const base = dark ? SW_DARK : SW_LIGHT;
+    const h = tweaks.accentHue;
+    return {
+      ...base,
+      brand: dark ? `oklch(0.78 0.10 ${h})` : `oklch(0.72 0.10 ${h})`,
+      peach: dark ? `oklch(0.55 0.07 ${h})` : `oklch(0.86 0.07 ${h})`,
+      peachInk: dark ? `oklch(0.92 0.05 ${h})` : `oklch(0.42 0.10 ${h})`,
+    };
+  }, [dark, tweaks.accentHue]);
+
+  // Mobile artboard size matches IOSDevice default
+  const PHONE_W = 390;
+  const PHONE_H = 844;
+
+  const Mobile = (label, El) => (
+    <DCArtboard id={label.replace(/\W+/g, '-')} label={label} width={PHONE_W} height={PHONE_H}>
+      <MobileShot dark={dark} c={c} screenLabel={label}>
+        <El c={c} dark={dark} />
+      </MobileShot>
+    </DCArtboard>
+  );
+
+  return (
+    <>
+      <DesignCanvas>
+        <DCSection id="mobile-onboarding" title="Mobile · Onboarding" subtitle="Level pick — three takes">
+          {Mobile('A · Welcome',         SWOnboardLevelC)}
+          {Mobile('B · Single level',    SWOnboardLevelA)}
+          {Mobile('C · Per-topic level', SWOnboardLevelB)}
+        </DCSection>
+
+        <DCSection id="mobile-feed" title="Mobile · Home feed" subtitle="Reels-style vertical player">
+          {Mobile('A · Playing',          SWFeedA)}
+          {Mobile('B · Mid-scroll hint',  SWFeedB)}
+          {Mobile('C · Quick-check quiz', SWFeedC)}
+        </DCSection>
+
+        <DCSection id="mobile-chat" title="Mobile · Ask AI" subtitle="Bottom-sheet chat over the video">
+          {Mobile('A · Chat thread',  SWChatA)}
+          {Mobile('B · First open',   SWChatB)}
+          {Mobile('C · Voice mode',   SWChatC)}
+        </DCSection>
+
+        <DCSection id="mobile-library" title="Mobile · Library" subtitle="Saves & playlists">
+          {Mobile('A · Playlists grid', SWLibraryA)}
+          {Mobile('B · Playlist detail', SWLibraryB)}
+          {Mobile('C · Recent + AI suggestion', SWLibraryC)}
+        </DCSection>
+
+        <DCSection id="web-feed" title="Web · Home feed" subtitle="Centered video, side rails">
+          <DCArtboard id="web-feed-a" label="A · Desktop with Ask AI panel" width={1280} height={780}>
+            <div data-screen-label="Web · Home feed" style={{ width: '100%', height: '100%' }}>
+              <ChromeWindow tabs={[{ title: 'ScrollWork — Feed' }]} url="scrollwork.app/feed" width={1280} height={780}>
+                <SWWebFeedA c={c} dark={dark} />
+              </ChromeWindow>
+            </div>
+          </DCArtboard>
+        </DCSection>
+
+        <DCSection id="web-explore" title="Web · Explore" subtitle="Search, filter, browse">
+          <DCArtboard id="web-explore-a" label="A · Picked for you" width={1280} height={780}>
+            <div data-screen-label="Web · Explore" style={{ width: '100%', height: '100%' }}>
+              <ChromeWindow tabs={[{ title: 'ScrollWork — Explore' }]} url="scrollwork.app/explore" width={1280} height={780}>
+                <SWWebExplore c={c} dark={dark} />
+              </ChromeWindow>
+            </div>
+          </DCArtboard>
+        </DCSection>
+
+        <DCSection id="system" title="System" subtitle="Tokens used across screens">
+          <DCArtboard id="system-tokens" label="Palette + type" width={780} height={520}>
+            <SystemSheet c={c} dark={dark} />
+          </DCArtboard>
+        </DCSection>
+      </DesignCanvas>
+
+      <TweaksPanel title="Tweaks">
+        <TweakSection title="Theme">
+          <TweakRadio
+            label="Mode"
+            value={tweaks.theme}
+            onChange={(v) => setTweak('theme', v)}
+            options={[{ value: 'light', label: 'Light' }, { value: 'dark', label: 'Dark' }]}
+          />
+          <TweakSlider
+            label="Accent hue"
+            value={tweaks.accentHue}
+            onChange={(v) => setTweak('accentHue', v)}
+            min={0} max={360} step={1}
+            unit="°"
+          />
+        </TweakSection>
+      </TweaksPanel>
+    </>
+  );
+}
+
+function SystemSheet({ c, dark }) {
+  const swatches = [
+    { name: 'paper', val: c.paper },
+    { name: 'card', val: c.card },
+    { name: 'raised', val: c.raised },
+    { name: 'ink', val: c.ink },
+    { name: 'ink2', val: c.ink2 },
+    { name: 'brand', val: c.brand },
+    { name: 'sage', val: c.sage },
+    { name: 'blush', val: c.blush },
+    { name: 'iris', val: c.iris },
+  ];
+  return (
+    <div style={{ background: c.paper, color: c.ink, padding: 36, height: '100%', fontFamily: SW_FONT }}>
+      <div style={{ fontFamily: SW_MONO, fontSize: 11, color: c.ink3, letterSpacing: 1.5, textTransform: 'uppercase' }}>System</div>
+      <div style={{ marginTop: 6, fontSize: 28, fontWeight: 600, letterSpacing: -0.5 }}>ScrollWork tokens</div>
+
+      <div style={{ marginTop: 28, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+        {swatches.map((s) => (
+          <div key={s.name} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 10, borderRadius: 12, background: c.card, border: `1px solid ${c.hairline}` }}>
+            <div style={{ width: 36, height: 36, borderRadius: 8, background: s.val, border: `1px solid ${c.hairline}` }} />
+            <div>
+              <div style={{ fontFamily: SW_MONO, fontSize: 11, color: c.ink2 }}>{s.name}</div>
+              <div style={{ fontSize: 12, color: c.ink, fontWeight: 500 }}>{s.val.length > 24 ? s.val.slice(0, 22) + '…' : s.val}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ marginTop: 28, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
+        <div>
+          <div style={{ fontFamily: SW_MONO, fontSize: 10, color: c.ink3, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 10 }}>Type</div>
+          <div style={{ fontSize: 32, fontWeight: 600, letterSpacing: -0.6, lineHeight: 1.1 }}>One concept,<br/>one minute.</div>
+          <div style={{ marginTop: 8, fontSize: 13, color: c.ink2 }}>Inter — body & headings</div>
+          <div style={{ marginTop: 12, fontFamily: SW_MONO, fontSize: 13, color: c.ink2 }}>JetBrains Mono — tags, meta</div>
+        </div>
+        <div>
+          <div style={{ fontFamily: SW_MONO, fontSize: 10, color: c.ink3, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 10 }}>Difficulty</div>
+          {['beginner', 'intermediate', 'advanced'].map((lv) => (
+            <div key={lv} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 0' }}>
+              <SWLevelBars level={lv} size={16} c={c} />
+              <div style={{ fontSize: 14, color: c.ink, textTransform: 'capitalize' }}>{lv}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

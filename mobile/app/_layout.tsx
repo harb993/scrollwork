@@ -37,9 +37,13 @@ export default function Layout() {
         screenOptions={{
           headerShown: false,
           contentStyle: { backgroundColor: colors.paper },
-          animation: 'fade',
+          animation: 'slide_from_right',
+          gestureEnabled: true,
         }}
-      />
+      >
+        <Stack.Screen name="index" options={{ gestureEnabled: false }} />
+        <Stack.Screen name="feed" options={{ gestureEnabled: true }} />
+      </Stack>
     </View>
   );
 }

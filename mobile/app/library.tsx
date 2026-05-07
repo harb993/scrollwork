@@ -122,8 +122,9 @@ export default function Library() {
       </ScrollView>
 
       <SWTabBar active="library" onTab={(id) => {
-        if (id === 'home') router.back();
+        if (id === 'home') router.dismissTo('/feed');
         else if (id === 'search') router.push('/explore');
+        else if (id === 'cards') router.push('/flashcards');
         else if (id === 'profile') router.push('/profile');
       }} />
     </View>

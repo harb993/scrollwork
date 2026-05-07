@@ -1,18 +1,33 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TextInput, FlatList, TouchableOpacity, KeyboardAvoidingView, Platform, Dimensions } from 'react-native';
+import { View, Text, TextInput, FlatList, TouchableOpacity, KeyboardAvoidingView, Platform, Dimensions, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Speech from 'expo-speech';
 import { useTheme } from '../constants/theme';
 import { api } from '../services/api';
 import { SWIcon } from '../components/SWIcon';
+import { addFlashcard } from '../services/flashcardStore';
 
 interface Message {
   id: string;
   text: string;
   sender: 'user' | 'system';
+  flashcards?: { question: string; answer: string }[];
 }
 
 const { height, width } = Dimensions.get('window');
+
+// Keywords that indicate user wants flash cards
+const FLASHCARD_KEYWORDS = [
+  'flash card', 'flashcard', 'flash cards', 'flashcards',
+  'make card', 'make cards', 'create card', 'create cards',
+  'study card', 'study cards', 'review card', 'review cards',
+  'generate card', 'generate cards',
+];
+
+function isFlashcardRequest(text: string): boolean {
+  const lower = text.toLowerCase();
+  return FLASHCARD_KEYWORDS.some(kw => lower.includes(kw));
+}
 
 export default function Tutor() {
   const { videoId, transcriptUrl } = useLocalSearchParams();
@@ -20,13 +35,14 @@ export default function Tutor() {
   const { colors, typography } = useTheme();
   
   const [messages, setMessages] = useState<Message[]>([
-    { id: '1', text: 'How can I help you understand this concept?', sender: 'system' }
+    { id: '1', text: 'How can I help you understand this concept? You can also ask me to make flash cards from this video.', sender: 'system' }
   ]);
   const [input, setInput] = useState('');
   const [ttsEnabled, setTtsEnabled] = useState(true);
+  const [savingCards, setSavingCards] = useState<Set<string>>(new Set());
   const listRef = useRef<FlatList>(null);
 
-  const suggestions = ['Real example?', 'Quiz me', 'Simpler please', 'Next concept'];
+  const suggestions = ['Make flash cards', 'Quiz me', 'Simpler please', 'Real example?'];
 
   useEffect(() => {
     return () => {
@@ -41,11 +57,55 @@ export default function Tutor() {
     setMessages(prev => [...prev, userMsg]);
     setInput('');
     
-    // Simulate typing
     const typingId = (Date.now() + 1).toString();
     setMessages(prev => [...prev, { id: typingId, text: '...', sender: 'system' }]);
 
-    const response = await api.chat(userMsg.text, transcriptUrl as string);
+    // Check if user is asking for flash cards
+    if (isFlashcardRequest(text)) {
+      // Generate flash cards from transcript
+      setMessages(prev => prev.map(m => m.id === typingId ? { ...m, text: 'Generating flash cards from the video...' } : m));
+
+      const cards = await api.generateFlashcards(transcriptUrl as string, 5);
+
+      if (cards.length === 0) {
+        setMessages(prev => prev.filter(m => m.id !== typingId).concat({
+          id: Date.now().toString(),
+          text: 'I could not generate flash cards for this video. The transcript might not be available.',
+          sender: 'system',
+        }));
+        return;
+      }
+
+      // Save all cards automatically
+      for (const card of cards) {
+        await addFlashcard(card.question, card.answer);
+      }
+
+      setMessages(prev => prev.filter(m => m.id !== typingId).concat({
+        id: Date.now().toString(),
+        text: `Done! I created ${cards.length} flash cards from this video. You can find them in the Cards tab.`,
+        sender: 'system',
+        flashcards: cards,
+      }));
+
+      if (ttsEnabled) {
+        Speech.stop();
+        Speech.speak(`Done! I created ${cards.length} flash cards from this video. You can find them in the Cards tab.`, { rate: 1.0, pitch: 1.0 });
+      }
+      return;
+    }
+
+    // Normal chat
+    const response = await api.chat(
+      userMsg.text,
+      transcriptUrl as string,
+      messages
+        .filter(m => m.text !== '...' && !m.text.startsWith('Generating flash cards'))
+        .map(m => ({
+          role: m.sender === 'user' ? 'user' as const : 'assistant' as const,
+          content: m.text,
+        }))
+    );
     
     setMessages(prev => prev.filter(m => m.id !== typingId).concat({
       id: Date.now().toString(),
@@ -59,8 +119,40 @@ export default function Tutor() {
     }
   };
 
+  const renderFlashcardPreview = (cards: { question: string; answer: string }[]) => (
+    <View style={{ marginTop: 10 }}>
+      {cards.map((card, i) => (
+        <View key={i} style={{
+          backgroundColor: colors.raised, borderRadius: 12, padding: 12, marginTop: 8,
+          borderWidth: 1, borderColor: colors.hairline,
+        }}>
+          <Text style={{
+            fontFamily: typography.fontFamilyMono, fontSize: 9.5, color: colors.peachInk,
+            letterSpacing: 0.3, textTransform: 'uppercase', marginBottom: 4,
+          }}>
+            Card {i + 1}
+          </Text>
+          <Text style={{
+            fontFamily: typography.fontFamilyMedium, fontSize: 13.5, color: colors.ink,
+            lineHeight: 18, marginBottom: 6,
+          }}>
+            {card.question}
+          </Text>
+          <View style={{ height: 1, backgroundColor: colors.hairline, marginBottom: 6 }} />
+          <Text style={{
+            fontFamily: typography.fontFamily, fontSize: 12.5, color: colors.ink2,
+            lineHeight: 17,
+          }}>
+            {card.answer}
+          </Text>
+        </View>
+      ))}
+    </View>
+  );
+
   const renderMessage = ({ item }: { item: Message }) => {
     const isUser = item.sender === 'user';
+    const isTyping = item.text === '...' || item.text.startsWith('Generating flash cards');
     return (
       <View style={{
         flexDirection: 'row',
@@ -87,6 +179,27 @@ export default function Tutor() {
           }}>
             {item.text}
           </Text>
+          {/* Show flash card previews inline */}
+          {item.flashcards && item.flashcards.length > 0 && renderFlashcardPreview(item.flashcards)}
+          {/* Show "View Cards" button on flash card messages */}
+          {item.flashcards && item.flashcards.length > 0 && (
+            <TouchableOpacity
+              onPress={() => router.push('/flashcards')}
+              style={{
+                flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+                marginTop: 12, paddingVertical: 10, borderRadius: 12,
+                backgroundColor: colors.brand,
+              }}
+            >
+              {SWIcon.cards(14, colors.brandInk)}
+              <Text style={{
+                fontFamily: typography.fontFamilyBold, fontSize: 13,
+                color: colors.brandInk,
+              }}>
+                View All Cards
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
     );

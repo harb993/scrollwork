@@ -1,6 +1,6 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, Dimensions, TouchableOpacity, Pressable } from 'react-native';
-import { useLocalSearchParams, useRouter, usePathname } from 'expo-router';
+import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { Video, ResizeMode } from 'expo-av';
 import { useTheme } from '../constants/theme';
 import { api, VideoData } from '../services/api';
@@ -14,9 +14,18 @@ const { height, width } = Dimensions.get('window');
 export default function Feed() {
   const router = useRouter();
   const { field, difficulty } = useLocalSearchParams();
-  const pathname = usePathname();
-  const isFocused = pathname === '/feed';
+  const [isFocused, setIsFocused] = useState(true);
   const { colors, typography } = useTheme();
+
+  // Properly track screen focus — pauses all videos when leaving, resumes when coming back
+  useFocusEffect(
+    useCallback(() => {
+      setIsFocused(true);
+      return () => {
+        setIsFocused(false);
+      };
+    }, [])
+  );
 
   const [videos, setVideos] = useState<VideoData[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -215,6 +224,7 @@ export default function Feed() {
       <SWTabBar active="home" onTab={(id) => {
         if (id === 'search') router.push('/explore');
         else if (id === 'library') router.push('/library');
+        else if (id === 'cards') router.push('/flashcards');
         else if (id === 'profile') router.push('/profile');
       }} />
 

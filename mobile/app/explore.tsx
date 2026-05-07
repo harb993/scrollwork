@@ -111,8 +111,9 @@ export default function Explore() {
       </ScrollView>
 
       <SWTabBar active="search" onTab={(id) => {
-        if (id === 'home') router.back();
+        if (id === 'home') router.dismissTo('/feed');
         else if (id === 'library') router.push('/library');
+        else if (id === 'cards') router.push('/flashcards');
         else if (id === 'profile') router.push('/profile');
       }} />
     </View>

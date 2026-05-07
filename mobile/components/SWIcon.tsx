@@ -102,4 +102,10 @@ export const SWIcon = {
       <Path d="M8 5v14l11-7z" />
     </Svg>
   ),
+  cards: (s = 22, color = "currentColor", fill = "none") => (
+    <Svg width={s} height={s} viewBox="0 0 24 24" fill={fill} stroke={color} strokeWidth="1.6" strokeLinejoin="round">
+      <Rect x="3" y="5" width="14" height="16" rx="2" />
+      <Path d="M7 5V3h14v14h-4" />
+    </Svg>
+  ),
 };

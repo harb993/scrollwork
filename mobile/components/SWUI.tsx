@@ -78,6 +78,7 @@ export function SWTabBar({ active = 'home', onTab }: { active: string, onTab?: (
     { id: 'home',    label: 'Feed',    icon: SWIcon.home },
     { id: 'search',  label: 'Explore', icon: SWIcon.search },
     { id: 'library', label: 'Library', icon: SWIcon.library },
+    { id: 'cards',   label: 'Cards',   icon: SWIcon.cards },
     { id: 'profile', label: 'You',     icon: SWIcon.user },
   ];
 

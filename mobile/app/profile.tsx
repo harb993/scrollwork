@@ -137,9 +137,10 @@ export default function Profile() {
       </ScrollView>
 
       <SWTabBar active="profile" onTab={(id) => {
-        if (id === 'home') router.back();
+        if (id === 'home') router.dismissTo('/feed');
         else if (id === 'search') router.push('/explore');
         else if (id === 'library') router.push('/library');
+        else if (id === 'cards') router.push('/flashcards');
       }} />
     </View>
   );

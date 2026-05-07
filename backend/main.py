@@ -9,7 +9,7 @@ from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import pandas as pd
-from langchain_community.chat_models import ChatOllama
+from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 
@@ -84,12 +84,10 @@ def get_feed(field: str = "CS", difficulty: int = 0):
 
 @app.get("/api/transcript/{video_id}")
 def get_transcript(video_id: str):
-    # Try to find the transcript file by matching original_tiktok_id or filename
     data = load_metadata()
     row = next((r for r in data if str(r["original_tiktok_id"]) == video_id), None)
 
     if row is None:
-        # Try matching by cs_N pattern
         row = next((r for r in data if r["video_filename"].replace(".mp4", "") == video_id), None)
 
     if row is None:
@@ -105,10 +103,32 @@ def get_transcript(video_id: str):
 
 
 # --- LLM Setup ---
-llm = ChatOllama(model="minimax-m2.5:cloud")
+# Groq key should be set via environment variable: export GROQ_API_KEY='your_key'
+
+llm = ChatGroq(model="llama-3.3-70b-versatile")
 
 prompt = ChatPromptTemplate.from_messages([
-    ("system", "You are an academic AI tutor for the ScrollWork learning platform. Your goal is to guide the student toward understanding the material through Socratic questioning and clear, concise explanations. Do not just give away the answer directly if it's a conceptual question; encourage the student to think. Use the following transcript from the current video as context to answer the student's question. If the answer cannot be found in or inferred from the transcript, rely on your general academic knowledge but keep it relevant to the topic.\n\nVideo Transcript Context:\n{context}"),
+    ("system", """You are "Scroll," the AI tutor built into the ScrollWork learning platform. You have a warm, encouraging personality — think of yourself as a brilliant grad-student mentor who genuinely loves teaching.
+
+PERSONALITY & TONE:
+• Friendly, upbeat, and concise — never robotic or dry.
+• Use casual-academic language: smart but approachable. Emojis are okay sparingly (🧠, 💡, ✅).
+• Celebrate the student's curiosity: "Great question!" / "Love that you're digging deeper."
+• Keep answers SHORT (3-5 sentences max) unless the student asks you to elaborate.
+
+TEACHING METHOD:
+1. ANCHOR to the transcript — always tie your answer back to what the student just watched.
+2. SOCRATIC FIRST — when a student asks a conceptual "what/why" question, respond with a guiding question before giving the full answer. Example: "Before I explain, what do YOU think happens when…?"
+3. ANALOGIES — use real-world analogies to make abstract concepts click.
+4. MICRO-QUIZ — after explaining, end with a quick check: "Quick check: can you tell me…?" or "True or false:…"
+5. If the student is stuck, give progressively more direct hints rather than the full answer immediately.
+
+BOUNDARIES:
+• Stay on-topic to the video's subject matter.
+• Never fabricate facts. If unsure, say so honestly.
+
+Video Transcript Context:
+{context}"""),
     ("human", "{question}")
 ])
 
@@ -118,11 +138,11 @@ chain = prompt | llm | StrOutputParser()
 def chat(req: ChatRequest):
     context = req.transcript_snippet
     
-    # If no snippet provided, try to fetch the full transcript
+    # Auto-fetch transcript if video_id is provided but snippet is missing
     if not context and req.video_id:
         transcript_data = get_transcript(req.video_id)
         context = transcript_data.get("text", "")
-        
+
     if not context:
         context = "No specific transcript context available."
 
@@ -132,7 +152,7 @@ def chat(req: ChatRequest):
             "question": req.question
         })
     except Exception as e:
-        answer = f"I'm sorry, I encountered an error while thinking about your question. ({str(e)})"
+        answer = f"I'm sorry, I encountered an error. ({str(e)})"
 
     return {"answer": answer}
 
@@ -153,8 +173,8 @@ if __name__ == "__main__":
     local_ip = get_local_ip()
     print(f"\n{'='*50}")
     print(f"  Tik-Transcrip API")
-    print(f"  Local:   http://127.0.0.1:8000")
-    print(f"  Network: http://{local_ip}:8000")
+    print(f"  Local:   http://127.0.0.1:8012")
+    print(f"  Network: http://{local_ip}:8012")
     print(f"  Use the Network URL in your Expo app!")
     print(f"{'='*50}\n")
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8012)

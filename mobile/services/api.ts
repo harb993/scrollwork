@@ -16,19 +16,21 @@ export interface VideoData {
 export const api = {
   getFeed: async (field: string, difficulty: string): Promise<VideoData[]> => {
     try {
-      // Map the field string from Onboarding to the correct Supabase Table and Bucket
       let tableName = 'cs_videos';
       let bucketName = 'CS-Videos';
 
       if (field === 'Medical') {
-        tableName = 'med_media'; // The user specified med_media is the table name
+        tableName = 'med_media';
         bucketName = 'med_media';
       } else if (field === 'EE' || field === 'Electrical Engineering') {
         tableName = 'ee_videos';
         bucketName = 'ee_media';
       } else if (field === 'Aerospace') {
-        tableName = 'aerospace'; // The user specified aerospace is the table name
+        tableName = 'aerospace';
         bucketName = 'as-eng';
+      } else if (field === 'Computer Science' || field === 'CS') {
+        tableName = 'cs_videos';
+        bucketName = 'CS-Videos';
       }
 
       const { data, error } = await supabase
@@ -39,8 +41,7 @@ export const api = {
       if (error) throw error;
       if (!data) return [];
 
-      // Map string difficulty to numerical threshold for sorting
-      let targetDiff = 5; // default Intermediate
+      let targetDiff = 5;
       if (difficulty === 'Beginner') targetDiff = 2;
       else if (difficulty === 'Advanced') targetDiff = 8;
 
@@ -63,23 +64,22 @@ export const api = {
   
   getTranscript: async (transcriptUrl: string): Promise<{ text: string }> => {
     try {
+      if (!transcriptUrl || transcriptUrl.includes('undefined')) return { text: "" };
       const res = await fetch(transcriptUrl);
-      if (!res.ok) throw new Error('Network error');
+      if (!res.ok) return { text: "" };
       const text = await res.text();
-      
       try {
         const json = JSON.parse(text);
-        return { text: json.text || "Transcript available." };
+        return { text: json.text || "" };
       } catch {
         return { text };
       }
     } catch (e) {
-      console.error('getTranscript Error:', e);
-      return { text: 'Transcript unavailable.' };
+      return { text: "" };
     }
   },
   
-  chat: async (question: string, transcriptUrl?: string): Promise<{ answer: string }> => {
+  chat: async (question: string, videoId: string, transcriptUrl?: string): Promise<{ answer: string }> => {
     try {
       let context = "No specific transcript context available.";
       
@@ -90,7 +90,6 @@ export const api = {
         }
       }
 
-      // Use Groq API for fast AI tutor responses
       const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
         headers: {
@@ -118,9 +117,8 @@ TEACHING METHOD:
 5. If the student is stuck, give progressively more direct hints rather than the full answer immediately.
 
 BOUNDARIES:
-• Stay on-topic to the video's subject matter. If asked something unrelated, gently redirect: "That's outside this video's scope, but here's a quick pointer…"
+• Stay on-topic to the video's subject matter.
 • Never fabricate facts. If unsure, say so honestly.
-• Never produce harmful, biased, or inappropriate content.
 
 VIDEO TRANSCRIPT CONTEXT:
 ${context}`
